@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
@@ -127,6 +128,15 @@ class ChatRenameRequest(BaseModel):
 
 class ChatSessionUpdateRequest(BaseModel):
     sharing_status: ChatSessionSharedStatus
+
+
+class SessionType(str, Enum):
+    CHAT = "chat"
+    SEARCH = "search"
+
+
+class DeleteAllSessionsRequest(BaseModel):
+    session_type: SessionType
 
 
 class RenameChatSessionResponse(BaseModel):
