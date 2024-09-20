@@ -276,11 +276,13 @@ def update_chat_session(
 
 
 def delete_all_chat_sessions_for_user(
-    user: User, session_type: SessionType, db_session: Session
+    user: User | None, session_type: SessionType, db_session: Session
 ) -> None:
     user_id = user.id if user is not None else None
     query = db_session.query(ChatSession).filter(ChatSession.user_id == user_id)
 
+    if session_type == SessionType.SLACK:
+        raise ValueError("Slack sessions cannot be deleted en masse")
     if session_type == SessionType.CHAT:
         query = query.filter(ChatSession.one_shot.is_(False))  # type: ignore
     elif session_type == SessionType.SEARCH:

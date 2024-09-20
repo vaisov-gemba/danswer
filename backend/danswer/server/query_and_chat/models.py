@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
@@ -9,6 +8,7 @@ from danswer.chat.models import RetrievalDocs
 from danswer.configs.constants import DocumentSource
 from danswer.configs.constants import MessageType
 from danswer.configs.constants import SearchFeedbackType
+from danswer.configs.constants import SessionType
 from danswer.db.enums import ChatSessionSharedStatus
 from danswer.file_store.models import FileDescriptor
 from danswer.llm.override_models import LLMOverride
@@ -128,11 +128,6 @@ class ChatRenameRequest(BaseModel):
 
 class ChatSessionUpdateRequest(BaseModel):
     sharing_status: ChatSessionSharedStatus
-
-
-class SessionType(str, Enum):
-    CHAT = "chat"
-    SEARCH = "search"
 
 
 class DeleteAllSessionsRequest(BaseModel):
