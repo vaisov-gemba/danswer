@@ -1767,7 +1767,7 @@ export function ChatPage({
           onClose={() => setShowDeleteAllModal(false)}
           additionalDetails="This action cannot be undone. All your chat sessions will be deleted."
           onSubmit={async () => {
-            const response = await deleteAllChatSessions("chat");
+            const response = await deleteAllChatSessions("Chat");
             if (response.ok) {
               setShowDeleteAllModal(false);
               setPopup({

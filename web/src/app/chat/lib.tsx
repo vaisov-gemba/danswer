@@ -286,7 +286,7 @@ export async function deleteChatSession(chatSessionId: number) {
   return response;
 }
 
-export async function deleteAllChatSessions(sessionType: "chat" | "search") {
+export async function deleteAllChatSessions(sessionType: "Chat" | "Search") {
   const response = await fetch(`/api/chat/delete-all-chat-sessions`, {
     method: "DELETE",
     headers: {

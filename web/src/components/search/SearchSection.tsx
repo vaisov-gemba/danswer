@@ -612,7 +612,7 @@ export const SearchSection = ({
             onClose={() => setShowDeleteAllModal(false)}
             additionalDetails="This action cannot be undone. All your search sessions will be deleted."
             onSubmit={async () => {
-              const response = await deleteAllChatSessions("search");
+              const response = await deleteAllChatSessions("Search");
               if (response.ok) {
                 setShowDeleteAllModal(false);
                 setPopup({
