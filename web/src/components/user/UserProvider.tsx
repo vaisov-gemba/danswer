@@ -10,6 +10,7 @@ interface UserContextType {
   isAdmin: boolean;
   isCurator: boolean;
   refreshUser: () => Promise<void>;
+  isCloudSuperuser: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -48,6 +49,7 @@ export function UserProvider({
         refreshUser,
         isAdmin: upToDateUser?.role === UserRole.ADMIN,
         isCurator: upToDateUser?.role === UserRole.CURATOR,
+        isCloudSuperuser: upToDateUser?.is_cloud_superuser ?? false,
       }}
     >
       {children}
