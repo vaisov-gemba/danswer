@@ -906,6 +906,7 @@ class VespaIndex(DocumentIndex):
         num_to_retrieve: int = 10,
     ) -> list[InferenceChunk]:
         """Retrieve random chunks matching the filters"""
+        print("filters", filters)
         vespa_where_clauses = build_vespa_filters(filters)
 
         # Remove trailing 'and' if it exists

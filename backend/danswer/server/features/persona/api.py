@@ -315,14 +315,14 @@ class StarterMessage(BaseModel):
 
 
 def get_random_chunks_from_doc_sets(
-    doc_set_ids: list[str], num_chunks: int, db_session: Session
+    doc_sets: list[str], num_chunks: int, db_session: Session
 ) -> list[InferenceChunk]:
     # Get the document index
     curr_ind_name, sec_ind_name = get_both_index_names(db_session)
     document_index = get_default_document_index(curr_ind_name, sec_ind_name)
 
     # Create filters to only get chunks from specified document sets
-    filters = IndexFilters(document_set_ids=doc_set_ids, access_control_list=None)
+    filters = IndexFilters(document_set=doc_sets, access_control_list=None)
 
     # Get random chunks directly from Vespa
     return document_index.random_retrieval(filters=filters, num_to_retrieve=num_chunks)
@@ -335,30 +335,40 @@ def build_assistant_prompts(
     db_session: Session = Depends(get_session),
     _: User | None = Depends(current_user),
 ) -> list[StarterMessage]:
-    document_sets = get_document_sets_by_ids(
-        document_set_ids=generate_persona_prompt_request.document_set_ids,
-        db_session=db_session,
+    print("generate_persona_prompt_request.document_set_ids")
+    print(generate_persona_prompt_request.document_set_ids)
+    base_prompt = (
+        "Create a very short starter message for a chatbot based on the provided content. "
+        "Ensure it includes a name and description, and invites user interaction. "
+        "Name shuodl be name of the prompt, desciprtion of hte promtps and then the acutal message that is setn"
+        + f"name {generate_persona_prompt_request.name}\n"
+        + f"description: {generate_persona_prompt_request.description}"
     )
-    print(document_sets)
-    llm, fast_llm = get_default_llms(temperature=1.0)
-    chunks = get_random_chunks_from_doc_sets(
-        doc_set_ids=generate_persona_prompt_request.document_set_ids,
-        num_chunks=4,
-        db_session=db_session,
-    )
-    random_content = "".join([chunk.content for chunk in chunks])
-    prompt = (
-        "Based on the following content sample, create a natural, engaging starter message for a chatbot. "
-        "The message should demonstrate knowledge of the content domain while inviting user interaction. "
-        "and 'message' (the actual conversation starter). Content sample: "
-        + random_content
-    )
+    _, fast_llm = get_default_llms(temperature=1.0)
+    if (
+        generate_persona_prompt_request.document_set_ids
+        and len(generate_persona_prompt_request.document_set_ids) > 0
+    ):
+        document_sets = get_document_sets_by_ids(
+            document_set_ids=generate_persona_prompt_request.document_set_ids,
+            db_session=db_session,
+        )
+        chunks = get_random_chunks_from_doc_sets(
+            doc_sets=[doc_set.name for doc_set in document_sets],
+            num_chunks=4,
+            db_session=db_session,
+        )
+        random_content = "".join([chunk.content for chunk in chunks])
+        base_prompt += f'and the conntent it has access to is similar in ilk to """{random_content}"""'
+
     prompts: StarterMessage = []
     for _ in range(4):
         import json
 
         response = json.loads(
-            fast_llm.invoke(prompt, structured_response_format=StarterMessage).content
+            fast_llm.invoke(
+                base_prompt, structured_response_format=StarterMessage
+            ).content
         )
         # Convert the LLM response into a StarterMessage object
         starter_message = StarterMessage(
