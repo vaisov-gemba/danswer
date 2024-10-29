@@ -1,4 +1,4 @@
-STARTER_PROMPT = """
+PERSONA_STARTER_MESSSAGE_CREATION_PROMPT = """
 Create a starter message for a chatbot. The response should include three parts:
 
 1. Name: A short, clear title for the prompt (e.g. 'Open Discussion', 'Project Planning')

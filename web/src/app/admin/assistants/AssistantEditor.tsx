@@ -5,15 +5,7 @@ import { generateRandomIconShape, createSVG } from "@/lib/assistantIconUtils";
 import { CCPairBasicInfo, DocumentSet, User } from "@/lib/types";
 import { Button, Divider, Italic } from "@tremor/react";
 import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
-import {
-  ArrayHelpers,
-  ErrorMessage,
-  Field,
-  FieldArray,
-  Form,
-  Formik,
-  FormikProps,
-} from "formik";
+import { ArrayHelpers, FieldArray, Form, Formik, FormikProps } from "formik";
 
 import {
   BooleanFormField,
@@ -38,11 +30,11 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { FiInfo } from "react-icons/fi";
+import { FiInfo, FiRefreshCcw } from "react-icons/fi";
 import * as Yup from "yup";
 import CollapsibleSection from "./CollapsibleSection";
 import { SuccessfulPersonaUpdateRedirectType } from "./enums";
-import { Persona, StarterMessage } from "./interfaces";
+import { Persona } from "./interfaces";
 import { createPersona, updatePersona } from "./lib";
 import { Popover } from "@/components/popover/Popover";
 import {
@@ -56,9 +48,8 @@ import { buildImgUrl } from "@/app/chat/files/images/utils";
 import { LlmList } from "@/components/llm/LLMList";
 import { useAssistants } from "@/components/context/AssistantsContext";
 import { debounce } from "lodash";
-import { Circle, Recycle } from "@phosphor-icons/react";
-import { CustomTooltip } from "@/components/tooltip/CustomTooltip";
 import { FullLLMProvider } from "../configuration/llm/interfaces";
+import StarterMessagesList from "./StarterMessageList";
 
 function findSearchTool(tools: ToolSnapshot[]) {
   return tools.find((tool) => tool.in_code_tool_id === "SearchTool");
@@ -76,134 +67,6 @@ function SubLabel({ children }: { children: string | JSX.Element }) {
   return (
     <div className="text-sm text-description font-description mb-2">
       {children}
-    </div>
-  );
-}
-
-// Create a new component for the starter messages
-function StarterMessagesList({
-  values,
-  arrayHelpers,
-  isRefreshing,
-}: {
-  values: StarterMessage[];
-  arrayHelpers: ArrayHelpers;
-  isRefreshing: boolean;
-}) {
-  useEffect(() => {
-    const currentLength = values.length;
-    if (currentLength < 4) {
-      // Add empty messages until we have 4
-      for (let i = currentLength; i < 4; i++) {
-        arrayHelpers.push({
-          name: "",
-          description: "",
-          message: "",
-        });
-      }
-    } else if (currentLength > 4) {
-      // Remove extra messages if we have more than 4
-      for (let i = currentLength - 1; i >= 4; i--) {
-        arrayHelpers.remove(i);
-      }
-    }
-  }, []); // Empty dependency array means this only runs once on mount
-
-  return (
-    <div className="w-full flex flex-wrap gap-6">
-      {values.map((starterMessage: StarterMessage, index: number) => (
-        <div
-          key={index}
-          className="max-w-2xl w-full bg-white border border-border rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6"
-        >
-          <div className="space-y-5">
-            {isRefreshing ? (
-              <div className="w-full">
-                <div className="w-full">
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
-                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-
-                <div>
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
-                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-
-                <div>
-                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
-                  <div className="h-24 w-full bg-gray-200 rounded animate-pulse" />
-                </div>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <Label small className="text-sm font-medium text-gray-700">
-                    Name
-                  </Label>
-                  <SubLabel>
-                    Shows up as the &quot;title&quot; for this Starter Message.
-                    For example, &quot;Write an email.&quot;
-                  </SubLabel>
-                  <Field
-                    name={`starter_messages.${index}.name`}
-                    className="mt-1 w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    autoComplete="off"
-                    placeholder="Enter a name..."
-                  />
-                  <ErrorMessage
-                    name={`starter_messages.${index}.name`}
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label small className="text-sm font-medium text-gray-700">
-                    Description
-                  </Label>
-                  <SubLabel>
-                    A description which tells the user what they might want to
-                    use this Starter Message for.
-                  </SubLabel>
-                  <Field
-                    name={`starter_messages.${index}.description`}
-                    className="text-sm mt-1 w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    autoComplete="off"
-                    as="textarea"
-                    placeholder="Enter a description..."
-                  />
-                  <ErrorMessage
-                    name={`starter_messages.${index}.description`}
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label small className="text-sm font-medium text-gray-700">
-                    Message
-                  </Label>
-                  <SubLabel>
-                    The actual message to be sent as the initial user message.
-                  </SubLabel>
-                  <Field
-                    name={`starter_messages.${index}.message`}
-                    className="mt-1  text-sm  w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition min-h-[100px] resize-y"
-                    as="textarea"
-                    autoComplete="off"
-                    placeholder="Enter the message..."
-                  />
-                  <ErrorMessage
-                    name={`starter_messages.${index}.message`}
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -408,6 +271,26 @@ export function AssistantEditor({
     },
     1000
   );
+
+  function usePromptRefresh(values: any, errors: any, setFieldValue: any) {
+    useEffect(() => {
+      // Only refresh if we have required fields and no errors
+      if (
+        values.name &&
+        values.description &&
+        Object.keys(errors).filter((key) => !key.startsWith("starter_messages"))
+          .length === 0
+      ) {
+        debouncedRefreshPrompts(values, setFieldValue);
+      }
+    }, [
+      values.name,
+      values.description,
+      values.document_set_ids,
+      errors,
+      setFieldValue,
+    ]);
+  }
 
   const [isRequestSuccessful, setIsRequestSuccessful] = useState(false);
 
@@ -627,6 +510,8 @@ export function AssistantEditor({
           const currentLLMSupportsImageOutput = checkLLMSupportsImageInput(
             values.llm_model_version_override || defaultModelName || ""
           );
+
+          usePromptRefresh(values, errors, setFieldValue);
 
           return (
             <Form className="w-full text-text-950">
@@ -1183,8 +1068,8 @@ export function AssistantEditor({
                 </div>
 
                 <SubLabel>
-                  Add pre-defined messages to help users get started. Only the
-                  first 4 will be displayed.
+                  Pre-configured messages that help users understand what this
+                  assistant can do and how to interact with it effectively.
                 </SubLabel>
                 <div className="relative w-fit">
                   <TooltipProvider delayDuration={50}>
@@ -1223,7 +1108,7 @@ export function AssistantEditor({
                           >
                             <div className="flex items-center gap-x-2">
                               {isRefreshing ? (
-                                <Recycle className="w-4 h-4 animate-spin text-gray-400" />
+                                <FiRefreshCcw className="w-4 h-4 animate-spin text-gray-400" />
                               ) : (
                                 <SwapIcon className="w-4 h-4 text-blue-600" />
                               )}
