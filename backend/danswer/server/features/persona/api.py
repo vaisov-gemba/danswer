@@ -2,7 +2,6 @@ import json
 import uuid
 from uuid import UUID
 
-from document_index.vespa.chunk_retrieval import get_random_chunks_from_doc_sets
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
@@ -14,6 +13,7 @@ from sqlalchemy.orm import Session
 from danswer.auth.users import current_admin_user
 from danswer.auth.users import current_curator_or_admin_user
 from danswer.auth.users import current_user
+from danswer.configs.chat_configs import NUM_PERSONA_PROMPT_GENERATION_CHUNKS
 from danswer.configs.chat_configs import NUM_PERSONA_PROMPTS
 from danswer.configs.constants import FileOrigin
 from danswer.configs.constants import NotificationType
@@ -31,11 +31,17 @@ from danswer.db.persona import update_all_personas_display_priority
 from danswer.db.persona import update_persona_public_status
 from danswer.db.persona import update_persona_shared_users
 from danswer.db.persona import update_persona_visibility
+from danswer.document_index.document_index_utils import get_both_index_names
+from danswer.document_index.factory import get_default_document_index
 from danswer.file_store.file_store import get_default_file_store
 from danswer.file_store.models import ChatFileType
 from danswer.llm.answering.prompts.utils import build_dummy_prompt
 from danswer.llm.factory import get_default_llms
 from danswer.prompts.starter_messages import PERSONA_STARTER_MESSSAGE_CREATION_PROMPT
+from danswer.search.models import IndexFilters
+from danswer.search.models import InferenceChunk
+from danswer.search.postprocessing.postprocessing import cleanup_chunks
+from danswer.search.preprocessing.access_filters import build_access_filters_for_user
 from danswer.server.features.persona.models import CreatePersonaRequest
 from danswer.server.features.persona.models import GeneratePersonaPromptRequest
 from danswer.server.features.persona.models import ImageGenerationToolStatus
@@ -311,6 +317,21 @@ def build_final_template_prompt(
     )
 
 
+def get_random_chunks_from_doc_sets(
+    doc_sets: list[str], db_session: Session, user: User | None = None
+) -> list[InferenceChunk]:
+    curr_ind_name, sec_ind_name = get_both_index_names(db_session)
+    document_index = get_default_document_index(curr_ind_name, sec_ind_name)
+
+    acl_filters = build_access_filters_for_user(user, db_session)
+    filters = IndexFilters(document_set=doc_sets, access_control_list=acl_filters)
+
+    chunks = document_index.random_retrieval(
+        filters=filters, num_to_retrieve=NUM_PERSONA_PROMPT_GENERATION_CHUNKS
+    )
+    return cleanup_chunks(chunks)
+
+
 def generate_starter_messages(
     name: str,
     description: str,
@@ -318,10 +339,10 @@ def generate_starter_messages(
     db_session: Session,
     user: User | None = Depends(current_user),
 ) -> list[StarterMessage]:
-    base_prompt = PERSONA_STARTER_MESSSAGE_CREATION_PROMPT.format(
+    start_message_generation_prompt = PERSONA_STARTER_MESSSAGE_CREATION_PROMPT.format(
         name=name, description=description
     )
-    _, fast_llm = get_default_llms(temperature=1.6)
+    _, fast_llm = get_default_llms(temperature=1.3)
 
     if len(document_set_ids) > 0:
         document_sets = get_document_sets_by_ids(
@@ -331,17 +352,13 @@ def generate_starter_messages(
 
         chunks = get_random_chunks_from_doc_sets(
             doc_sets=[doc_set.name for doc_set in document_sets],
-            num_chunks=4,
             db_session=db_session,
             user=user,
         )
 
         # Add example content context to the prompt
-        chunk_contents = "\n".join(
-            f"--- Document Chunk {i+1} ---\n{chunk.content.strip()}\n"
-            for i, chunk in enumerate(chunks)
-        )
-        base_prompt += (
+        chunk_contents = "\n".join(chunk.content.strip() for chunk in chunks)
+        start_message_generation_prompt += (
             "\n\nExample content this assistant has access to:\n"
             "'''\n"
             f"{chunk_contents}"
@@ -352,7 +369,7 @@ def generate_starter_messages(
     functions = [
         FunctionCall(
             fast_llm.invoke,
-            (base_prompt, None, None, StarterMessage),
+            (start_message_generation_prompt, None, None, StarterMessage),
         )
         for _ in range(NUM_PERSONA_PROMPTS)
     ]

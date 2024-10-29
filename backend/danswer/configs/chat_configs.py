@@ -71,6 +71,7 @@ LANGUAGE_CHAT_NAMING_HINT = (
 
 # Number of prompts each persona should have
 NUM_PERSONA_PROMPTS = 4
+NUM_PERSONA_PROMPT_GENERATION_CHUNKS = 5
 
 # Agentic search takes significantly more tokens and therefore has much higher cost.
 # This configuration allows users to get a search-only experience with instant results

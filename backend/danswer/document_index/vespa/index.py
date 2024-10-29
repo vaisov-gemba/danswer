@@ -2,6 +2,7 @@ import concurrent.futures
 import io
 import logging
 import os
+import random
 import re
 import time
 import urllib
@@ -906,26 +907,17 @@ class VespaIndex(DocumentIndex):
     ) -> list[InferenceChunkUncleaned]:
         """Retrieve random chunks matching the filters using Vespa's random ranking"""
         vespa_where_clauses = build_vespa_filters(filters)
-
-        # Remove trailing 'and' if it exists
-        if vespa_where_clauses.strip().endswith("and"):
-            vespa_where_clauses = vespa_where_clauses.strip()[:-3].strip()
-
-        # Add a true condition if we only have hidden filter
-        if vespa_where_clauses == "!(hidden=true)":
-            vespa_where_clauses += " and true"
-
         yql = YQL_BASE.format(index_name=self.index_name) + vespa_where_clauses
 
         # Use current timestamp as seed for randomization
-        current_time = int(time.time())
+        random_seed = random.randint(0, 1000000)
 
         params: dict[str, str | int | float] = {
             "yql": yql,
             "hits": num_to_retrieve,
             "timeout": VESPA_TIMEOUT,
             "ranking.profile": "random_",
-            "ranking.properties.random.seed": current_time,
+            "ranking.properties.random.seed": random_seed,
         }
 
         return query_vespa(params)

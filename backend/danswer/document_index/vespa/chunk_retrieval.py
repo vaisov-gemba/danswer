@@ -9,12 +9,8 @@ from typing import cast
 
 import httpx
 from retry import retry
-from sqlalchemy.orm import Session
 
 from danswer.configs.app_configs import LOG_VESPA_TIMING_INFORMATION
-from danswer.db.models import User
-from danswer.document_index.document_index_utils import get_both_index_names
-from danswer.document_index.factory import get_default_document_index
 from danswer.document_index.interfaces import VespaChunkRequest
 from danswer.document_index.vespa.shared_utils.utils import get_vespa_http_client
 from danswer.document_index.vespa.shared_utils.vespa_request_builders import (
@@ -49,10 +45,7 @@ from danswer.document_index.vespa_constants import SOURCE_TYPE
 from danswer.document_index.vespa_constants import TITLE
 from danswer.document_index.vespa_constants import YQL_BASE
 from danswer.search.models import IndexFilters
-from danswer.search.models import InferenceChunk
 from danswer.search.models import InferenceChunkUncleaned
-from danswer.search.postprocessing.postprocessing import cleanup_chunks
-from danswer.search.preprocessing.access_filters import build_access_filters_for_user
 from danswer.utils.logger import setup_logger
 from danswer.utils.threadpool_concurrency import run_functions_tuples_in_parallel
 
@@ -434,18 +427,3 @@ def batch_search_api_retrieval(
         )
 
     return retrieved_chunks
-
-
-def get_random_chunks_from_doc_sets(
-    doc_sets: list[str], num_chunks: int, db_session: Session, user: User | None = None
-) -> list[InferenceChunk]:
-    curr_ind_name, sec_ind_name = get_both_index_names(db_session)
-    document_index = get_default_document_index(curr_ind_name, sec_ind_name)
-
-    acl_filters = build_access_filters_for_user(user, db_session)
-    filters = IndexFilters(document_set=doc_sets, access_control_list=acl_filters)
-
-    chunks = document_index.random_retrieval(
-        filters=filters, num_to_retrieve=num_chunks
-    )
-    return cleanup_chunks(chunks)
