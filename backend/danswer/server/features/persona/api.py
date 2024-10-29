@@ -17,6 +17,7 @@ from danswer.configs.constants import FileOrigin
 from danswer.configs.constants import NotificationType
 from danswer.db.document_set import get_document_sets_by_ids
 from danswer.db.engine import get_session
+from danswer.db.models import StarterMessageModel as StarterMessage
 from danswer.db.models import User
 from danswer.db.notification import create_notification
 from danswer.db.persona import create_update_persona
@@ -34,8 +35,11 @@ from danswer.file_store.file_store import get_default_file_store
 from danswer.file_store.models import ChatFileType
 from danswer.llm.answering.prompts.utils import build_dummy_prompt
 from danswer.llm.factory import get_default_llms
+from danswer.prompts.starter_messages import STARTER_PROMPT
 from danswer.search.models import IndexFilters
 from danswer.search.models import InferenceChunk
+from danswer.search.postprocessing.postprocessing import cleanup_chunks
+from danswer.search.preprocessing.access_filters import build_access_filters_for_user
 from danswer.server.features.persona.models import CreatePersonaRequest
 from danswer.server.features.persona.models import GeneratePersonaPromptRequest
 from danswer.server.features.persona.models import ImageGenerationToolStatus
@@ -45,6 +49,8 @@ from danswer.server.features.persona.models import PromptTemplateResponse
 from danswer.server.models import DisplayPriorityRequest
 from danswer.tools.utils import is_image_generation_available
 from danswer.utils.logger import setup_logger
+from danswer.utils.threadpool_concurrency import FunctionCall
+from danswer.utils.threadpool_concurrency import run_functions_in_parallel
 
 logger = setup_logger()
 
@@ -309,24 +315,73 @@ def build_final_template_prompt(
     )
 
 
-class StarterMessage(BaseModel):
-    name: str
-    description: str
-    message: str
-
-
 def get_random_chunks_from_doc_sets(
-    doc_sets: list[str], num_chunks: int, db_session: Session
+    doc_sets: list[str], num_chunks: int, db_session: Session, user: User | None = None
 ) -> list[InferenceChunk]:
-    # Get the document index
     curr_ind_name, sec_ind_name = get_both_index_names(db_session)
     document_index = get_default_document_index(curr_ind_name, sec_ind_name)
 
-    # Create filters to only get chunks from specified document sets
-    filters = IndexFilters(document_set=doc_sets, access_control_list=None)
+    acl_filters = build_access_filters_for_user(user, db_session)
+    filters = IndexFilters(document_set=doc_sets, access_control_list=acl_filters)
 
-    # Get random chunks directly from Vespa
-    return document_index.random_retrieval(filters=filters, num_to_retrieve=num_chunks)
+    chunks = document_index.random_retrieval(
+        filters=filters, num_to_retrieve=num_chunks
+    )
+    return cleanup_chunks(chunks)
+
+
+def generate_starter_messages(
+    name: str,
+    description: str,
+    document_set_ids: list[int],
+    db_session: Session,
+    user: User | None = Depends(current_user),
+) -> list[StarterMessage]:
+    base_prompt = STARTER_PROMPT.format(name=name, description=description)
+    _, fast_llm = get_default_llms(temperature=1.6)
+
+    if len(document_set_ids) > 0:
+        document_sets = get_document_sets_by_ids(
+            document_set_ids=document_set_ids,
+            db_session=db_session,
+        )
+
+        chunks = get_random_chunks_from_doc_sets(
+            doc_sets=[doc_set.name for doc_set in document_sets],
+            num_chunks=4,
+            db_session=db_session,
+            user=user,
+        )
+
+        # Add example content context to the prompt
+        chunk_contents = "\n".join(chunk.content.strip() for chunk in chunks)
+        base_prompt += (
+            "\n\nExample content this assistant has access to:\n"
+            "'''\n"
+            f"{chunk_contents}"
+            "\n'''"
+        )
+
+    prompts: list[StarterMessage] = []
+    functions = [
+        FunctionCall(
+            fast_llm.invoke,
+            (base_prompt, None, None, StarterMessage),
+        )
+        for _ in range(4)
+    ]
+
+    results = run_functions_in_parallel(function_calls=functions)
+    for response in results.values():
+        print(response.content)
+        response_dict = json.loads(response.content)
+        starter_message = StarterMessage(
+            name=response_dict["name"],
+            description=response_dict["description"],
+            message=response_dict["message"],
+        )
+        prompts.append(starter_message)
+    return prompts
 
 
 # Based on an assistant schema, generates 4 prompts
@@ -334,47 +389,18 @@ def get_random_chunks_from_doc_sets(
 def build_assistant_prompts(
     generate_persona_prompt_request: GeneratePersonaPromptRequest,
     db_session: Session = Depends(get_session),
-    _: User | None = Depends(current_user),
+    user: User | None = Depends(current_user),
 ) -> list[StarterMessage]:
-    base_prompt = (
-        "Create a starter message for a chatbot. The response should include three parts:\n"
-        "1. Name: A short, clear title for the prompt (e.g. 'Open Discussion', 'Project Planning')\n"
-        "2. Description: A brief explanation of what this prompt is for\n"
-        "3. Message: The actual conversation starter that will be sent to the chatbot. This should be natural and engaging.\n\n"
-        "Make each part concise but inviting for user interaction.\n"
-        f"Context about the assistant - Name: {generate_persona_prompt_request.name}\n"
-        f"Description: {generate_persona_prompt_request.description}"
-    )
-    _, fast_llm = get_default_llms(temperature=1.0)
-    if (
-        generate_persona_prompt_request.document_set_ids
-        and len(generate_persona_prompt_request.document_set_ids) > 0
-    ):
-        document_sets = get_document_sets_by_ids(
+    try:
+        return generate_starter_messages(
+            name=generate_persona_prompt_request.name,
+            description=generate_persona_prompt_request.description,
             document_set_ids=generate_persona_prompt_request.document_set_ids,
             db_session=db_session,
+            user=user,
         )
-        chunks = get_random_chunks_from_doc_sets(
-            doc_sets=[doc_set.name for doc_set in document_sets],
-            num_chunks=4,
-            db_session=db_session,
+    except Exception:
+        logger.exception("Failed to generate starter messages")
+        raise HTTPException(
+            status_code=500, detail="Failed to generate starter messages"
         )
-        random_content = "".join([chunk.content for chunk in chunks])
-        base_prompt += f'and the conntent it has access to is similar in ilk to """{random_content}"""'
-
-    prompts: StarterMessage = []
-    for _ in range(4):
-        response = json.loads(
-            fast_llm.invoke(
-                base_prompt, structured_response_format=StarterMessage
-            ).content
-        )
-        # Convert the LLM response into a StarterMessage object
-        starter_message = StarterMessage(
-            name=response["name"],
-            description=response["description"],
-            message=response["message"],
-        )
-        prompts.append(starter_message)
-
-    return prompts

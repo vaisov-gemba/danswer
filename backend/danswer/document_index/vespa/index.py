@@ -69,7 +69,6 @@ from danswer.document_index.vespa_constants import YQL_BASE
 from danswer.indexing.models import DocMetadataAwareIndexChunk
 from danswer.key_value_store.factory import get_kv_store
 from danswer.search.models import IndexFilters
-from danswer.search.models import InferenceChunk
 from danswer.search.models import InferenceChunkUncleaned
 from danswer.utils.batching import batch_generator
 from danswer.utils.logger import setup_logger
@@ -904,9 +903,8 @@ class VespaIndex(DocumentIndex):
         self,
         filters: IndexFilters,
         num_to_retrieve: int = 10,
-    ) -> list[InferenceChunk]:
-        """Retrieve random chunks matching the filters"""
-        print("filters", filters)
+    ) -> list[InferenceChunkUncleaned]:
+        """Retrieve random chunks matching the filters using Vespa's random ranking"""
         vespa_where_clauses = build_vespa_filters(filters)
 
         # Remove trailing 'and' if it exists
@@ -919,22 +917,18 @@ class VespaIndex(DocumentIndex):
 
         yql = YQL_BASE.format(index_name=self.index_name) + vespa_where_clauses
 
-        import random
+        # Use current timestamp as seed for randomization
+        current_time = int(time.time())
 
         params: dict[str, str | int | float] = {
             "yql": yql,
-            "hits": num_to_retrieve
-            * 10,  # Request more hits to get better randomization
+            "hits": num_to_retrieve,
             "timeout": VESPA_TIMEOUT,
-            "ranking.softtimeout.enable": "false",  # Ensure we get all results
+            "ranking.profile": "random_",
+            "ranking.properties.random.seed": current_time,
         }
 
-        results = query_vespa(params)
-
-        # Randomly sample from the results
-        if len(results) > num_to_retrieve:
-            return random.sample(results, num_to_retrieve)
-        return results
+        return query_vespa(params)
 
 
 class _VespaDeleteRequest:

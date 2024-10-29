@@ -1,7 +1,7 @@
 "use client";
 
+import { Option } from "@/components/Dropdown";
 import { generateRandomIconShape, createSVG } from "@/lib/assistantIconUtils";
-
 import { CCPairBasicInfo, DocumentSet, User } from "@/lib/types";
 import { Button, Divider, Italic } from "@tremor/react";
 import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
@@ -43,7 +43,7 @@ import * as Yup from "yup";
 import CollapsibleSection from "./CollapsibleSection";
 import { SuccessfulPersonaUpdateRedirectType } from "./enums";
 import { Persona, StarterMessage } from "./interfaces";
-import { buildFinalPrompt, createPersona, updatePersona } from "./lib";
+import { createPersona, updatePersona } from "./lib";
 import { Popover } from "@/components/popover/Popover";
 import {
   CameraIcon,
@@ -110,11 +110,11 @@ function StarterMessagesList({
   }, []); // Empty dependency array means this only runs once on mount
 
   return (
-    <div className="w-full grid grid-cols-2 gap-6">
+    <div className="w-full flex flex-wrap gap-6">
       {values.map((starterMessage: StarterMessage, index: number) => (
         <div
           key={index}
-          className="bg-white border border-border rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6"
+          className="max-w-2xl w-full bg-white border border-border rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6"
         >
           <div className="space-y-5">
             {isRefreshing ? (
@@ -141,8 +141,8 @@ function StarterMessagesList({
                     Name
                   </Label>
                   <SubLabel>
-                    Shows up as the "title" for this Starter Message. For
-                    example, "Write an email".
+                    Shows up as the &quot;title&quot; for this Starter Message.
+                    For example, &quot;Write an email.&quot;
                   </SubLabel>
                   <Field
                     name={`starter_messages.${index}.name`}
@@ -627,27 +627,6 @@ export function AssistantEditor({
           const currentLLMSupportsImageOutput = checkLLMSupportsImageInput(
             values.llm_model_version_override || defaultModelName || ""
           );
-
-          useEffect(() => {
-            // Only refresh if we have required fields and no errors
-            if (
-              values.name &&
-              values.description &&
-              Object.keys(errors).filter(
-                (key) => !key.startsWith("starter_messages")
-              ).length === 0
-            ) {
-              debouncedRefreshPrompts(values, setFieldValue);
-            } else {
-              console.log("not refreshing");
-              console.log(errors);
-            }
-          }, [
-            values.name,
-            values.description,
-            values.document_set_ids,
-            errors,
-          ]);
 
           return (
             <Form className="w-full text-text-950">
@@ -1196,7 +1175,7 @@ export function AssistantEditor({
                 </div>
               </div>
 
-              <div className="mb-6 max-w-5xl w-full flex flex-col">
+              <div className="mb-6 w-full flex flex-col">
                 <div className="flex gap-x-2 items-center">
                   <div className="block font-medium text-base">
                     Starter Messages

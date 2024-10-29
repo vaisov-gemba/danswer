@@ -6,7 +6,6 @@ from typing import Any
 from danswer.access.models import DocumentAccess
 from danswer.indexing.models import DocMetadataAwareIndexChunk
 from danswer.search.models import IndexFilters
-from danswer.search.models import InferenceChunk
 from danswer.search.models import InferenceChunkUncleaned
 from shared_configs.model_server_models import Embedding
 
@@ -372,7 +371,7 @@ class RandomCapable(abc.ABC):
         self,
         filters: IndexFilters,
         num_to_retrieve: int = 10,
-    ) -> list[InferenceChunk]:
+    ) -> list[InferenceChunkUncleaned]:
         """Retrieve random chunks matching the filters"""
         raise NotImplementedError
 
