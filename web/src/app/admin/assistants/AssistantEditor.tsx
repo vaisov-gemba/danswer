@@ -511,6 +511,9 @@ export function AssistantEditor({
             values.llm_model_version_override || defaultModelName || ""
           );
 
+          // This is necessary to refresh the starter messages
+          // when the name or description changes
+          // eslint-disable-next-line react-hooks/rules-of-hooks
           usePromptRefresh(values, errors, setFieldValue);
 
           return (
