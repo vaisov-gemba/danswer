@@ -5,7 +5,14 @@ import { generateRandomIconShape, createSVG } from "@/lib/assistantIconUtils";
 import { CCPairBasicInfo, DocumentSet, User } from "@/lib/types";
 import { Button, Divider, Italic } from "@tremor/react";
 import { IsPublicGroupSelector } from "@/components/IsPublicGroupSelector";
-import { ArrayHelpers, FieldArray, Form, Formik, FormikProps } from "formik";
+import {
+  ArrayHelpers,
+  FieldArray,
+  Form,
+  Formik,
+  FormikProps,
+  useFormikContext,
+} from "formik";
 
 import {
   BooleanFormField,
@@ -69,6 +76,15 @@ function SubLabel({ children }: { children: string | JSX.Element }) {
       {children}
     </div>
   );
+}
+
+function FormikPromptRefresh({
+  usePromptRefresh,
+}: {
+  usePromptRefresh: () => void;
+}) {
+  usePromptRefresh();
+  return null;
 }
 
 export function AssistantEditor({
@@ -271,8 +287,8 @@ export function AssistantEditor({
     },
     1000
   );
-
-  function usePromptRefresh(values: any, errors: any, setFieldValue: any) {
+  function usePromptRefresh() {
+    const { values, errors, setFieldValue } = useFormikContext<any>();
     useEffect(() => {
       // Only refresh if we have required fields and no errors
       if (
@@ -514,10 +530,10 @@ export function AssistantEditor({
           // This is necessary to refresh the starter messages
           // when the name or description changes
           // eslint-disable-next-line react-hooks/rules-of-hooks
-          usePromptRefresh(values, errors, setFieldValue);
 
           return (
             <Form className="w-full text-text-950">
+              <FormikPromptRefresh usePromptRefresh={usePromptRefresh} />
               <div className="w-full flex gap-x-2 justify-center">
                 <Popover
                   open={isIconDropdownOpen}

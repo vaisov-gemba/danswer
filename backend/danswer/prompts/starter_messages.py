@@ -9,3 +9,7 @@ Make each part concise but inviting for user interaction.
 Context about the assistant - Name: {name}
 Description: {description}
 """
+
+
+if __name__ == "__main__":
+    print(PERSONA_STARTER_MESSSAGE_CREATION_PROMPT)
