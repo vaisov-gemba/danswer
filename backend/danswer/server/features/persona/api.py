@@ -2,6 +2,7 @@ import json
 import uuid
 from uuid import UUID
 
+from document_index.vespa.chunk_retrieval import get_random_chunks_from_doc_sets
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
@@ -30,17 +31,11 @@ from danswer.db.persona import update_all_personas_display_priority
 from danswer.db.persona import update_persona_public_status
 from danswer.db.persona import update_persona_shared_users
 from danswer.db.persona import update_persona_visibility
-from danswer.document_index.document_index_utils import get_both_index_names
-from danswer.document_index.factory import get_default_document_index
 from danswer.file_store.file_store import get_default_file_store
 from danswer.file_store.models import ChatFileType
 from danswer.llm.answering.prompts.utils import build_dummy_prompt
 from danswer.llm.factory import get_default_llms
 from danswer.prompts.starter_messages import PERSONA_STARTER_MESSSAGE_CREATION_PROMPT
-from danswer.search.models import IndexFilters
-from danswer.search.models import InferenceChunk
-from danswer.search.postprocessing.postprocessing import cleanup_chunks
-from danswer.search.preprocessing.access_filters import build_access_filters_for_user
 from danswer.server.features.persona.models import CreatePersonaRequest
 from danswer.server.features.persona.models import GeneratePersonaPromptRequest
 from danswer.server.features.persona.models import ImageGenerationToolStatus
@@ -314,21 +309,6 @@ def build_final_template_prompt(
             retrieval_disabled=retrieval_disabled,
         )
     )
-
-
-def get_random_chunks_from_doc_sets(
-    doc_sets: list[str], num_chunks: int, db_session: Session, user: User | None = None
-) -> list[InferenceChunk]:
-    curr_ind_name, sec_ind_name = get_both_index_names(db_session)
-    document_index = get_default_document_index(curr_ind_name, sec_ind_name)
-
-    acl_filters = build_access_filters_for_user(user, db_session)
-    filters = IndexFilters(document_set=doc_sets, access_control_list=acl_filters)
-
-    chunks = document_index.random_retrieval(
-        filters=filters, num_to_retrieve=num_chunks
-    )
-    return cleanup_chunks(chunks)
 
 
 def generate_starter_messages(
