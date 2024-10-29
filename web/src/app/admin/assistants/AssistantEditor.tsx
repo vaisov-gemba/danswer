@@ -24,7 +24,6 @@ import {
 import { usePopup } from "@/components/admin/connectors/Popup";
 import { getDisplayNameForModel } from "@/lib/hooks";
 import { DocumentSetSelectable } from "@/components/documentSet/DocumentSetSelectable";
-import { Option } from "@/components/Dropdown";
 import { addAssistantToList } from "@/lib/assistants/updateAssistantPreferences";
 import { checkLLMSupportsImageInput, destructureValue } from "@/lib/llm/utils";
 import { ToolSnapshot } from "@/lib/tools/interfaces";
@@ -38,10 +37,9 @@ import {
 } from "@radix-ui/react-tooltip";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { FiInfo, FiPlus, FiX } from "react-icons/fi";
+import { useEffect, useMemo, useState } from "react";
+import { FiInfo } from "react-icons/fi";
 import * as Yup from "yup";
-import { FullLLMProvider } from "../configuration/llm/interfaces";
 import CollapsibleSection from "./CollapsibleSection";
 import { SuccessfulPersonaUpdateRedirectType } from "./enums";
 import { Persona, StarterMessage } from "./interfaces";
@@ -59,6 +57,8 @@ import { LlmList } from "@/components/llm/LLMList";
 import { useAssistants } from "@/components/context/AssistantsContext";
 import { debounce } from "lodash";
 import { Circle, Recycle } from "@phosphor-icons/react";
+import { CustomTooltip } from "@/components/tooltip/CustomTooltip";
+import { FullLLMProvider } from "../configuration/llm/interfaces";
 
 function findSearchTool(tools: ToolSnapshot[]) {
   return tools.find((tool) => tool.in_code_tool_id === "SearchTool");
@@ -84,9 +84,11 @@ function SubLabel({ children }: { children: string | JSX.Element }) {
 function StarterMessagesList({
   values,
   arrayHelpers,
+  isRefreshing,
 }: {
   values: StarterMessage[];
   arrayHelpers: ArrayHelpers;
+  isRefreshing: boolean;
 }) {
   useEffect(() => {
     const currentLength = values.length;
@@ -108,66 +110,97 @@ function StarterMessagesList({
   }, []); // Empty dependency array means this only runs once on mount
 
   return (
-    <div className="space-y-6">
+    <div className="w-full grid grid-cols-2 gap-6">
       {values.map((starterMessage: StarterMessage, index: number) => (
-        <div key={index} className="border border-border p-3 rounded">
-          <div className="space-y-3">
-            <div>
-              <Label small>Name</Label>
-              <SubLabel>
-                Shows up as the "title" for this Starter Message. For example,
-                "Write an email".
-              </SubLabel>
-              <Field
-                name={`starter_messages.${index}.name`}
-                className="border border-border bg-background rounded w-full py-2 px-3"
-                autoComplete="off"
-              />
-              <ErrorMessage
-                name={`starter_messages.${index}.name`}
-                component="div"
-                className="text-error text-sm mt-1"
-              />
-            </div>
+        <div
+          key={index}
+          className="bg-white border border-border rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6"
+        >
+          <div className="space-y-5">
+            {isRefreshing ? (
+              <div className="w-full">
+                <div className="w-full">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
+                </div>
 
-            <div>
-              <Label small>Description</Label>
-              <SubLabel>
-                A description which tells the user what they might want to use
-                this Starter Message for. For example "to a client about a new
-                feature"
-              </SubLabel>
-              <Field
-                name={`starter_messages.${index}.description`}
-                className="border border-border bg-background rounded w-full py-2 px-3"
-                autoComplete="off"
-              />
-              <ErrorMessage
-                name={`starter_messages.${index}.description`}
-                component="div"
-                className="text-error text-sm mt-1"
-              />
-            </div>
+                <div>
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
+                </div>
 
-            <div>
-              <Label small>Message</Label>
-              <SubLabel>
-                The actual message to be sent as the initial user message if a
-                user selects this starter prompt. For example, "Write me an
-                email to a client about a new billing feature we just released."
-              </SubLabel>
-              <Field
-                name={`starter_messages.${index}.message`}
-                className="border border-border bg-background rounded w-full py-2 px-3"
-                as="textarea"
-                autoComplete="off"
-              />
-              <ErrorMessage
-                name={`starter_messages.${index}.message`}
-                component="div"
-                className="text-error text-sm mt-1"
-              />
-            </div>
+                <div>
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-24 w-full bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label small className="text-sm font-medium text-gray-700">
+                    Name
+                  </Label>
+                  <SubLabel>
+                    Shows up as the "title" for this Starter Message. For
+                    example, "Write an email".
+                  </SubLabel>
+                  <Field
+                    name={`starter_messages.${index}.name`}
+                    className="mt-1 w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    autoComplete="off"
+                    placeholder="Enter a name..."
+                  />
+                  <ErrorMessage
+                    name={`starter_messages.${index}.name`}
+                    component="div"
+                    className="text-red-500 text-sm mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label small className="text-sm font-medium text-gray-700">
+                    Description
+                  </Label>
+                  <SubLabel>
+                    A description which tells the user what they might want to
+                    use this Starter Message for.
+                  </SubLabel>
+                  <Field
+                    name={`starter_messages.${index}.description`}
+                    className="text-sm mt-1 w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    autoComplete="off"
+                    as="textarea"
+                    placeholder="Enter a description..."
+                  />
+                  <ErrorMessage
+                    name={`starter_messages.${index}.description`}
+                    component="div"
+                    className="text-red-500 text-sm mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label small className="text-sm font-medium text-gray-700">
+                    Message
+                  </Label>
+                  <SubLabel>
+                    The actual message to be sent as the initial user message.
+                  </SubLabel>
+                  <Field
+                    name={`starter_messages.${index}.message`}
+                    className="mt-1  text-sm  w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition min-h-[100px] resize-y"
+                    as="textarea"
+                    autoComplete="off"
+                    placeholder="Enter the message..."
+                  />
+                  <ErrorMessage
+                    name={`starter_messages.${index}.message`}
+                    component="div"
+                    className="text-red-500 text-sm mt-1"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -219,6 +252,7 @@ export function AssistantEditor({
   const [defautIconColor, _setDeafultIconColor] = useState(
     colorOptions[Math.floor(Math.random() * colorOptions.length)]
   );
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [defaultIconShape, setDefaultIconShape] = useState<any>(null);
 
@@ -232,6 +266,10 @@ export function AssistantEditor({
 
   const [removePersonaImage, setRemovePersonaImage] = useState(false);
 
+  const autoStarterMessageEnabled = useMemo(
+    () => llmProviders.length > 0,
+    [llmProviders.length]
+  );
   const isUpdate = existingPersona !== undefined && existingPersona !== null;
   const existingPrompt = existingPersona?.prompts[0] ?? null;
   const defaultProvider = llmProviders.find(
@@ -301,7 +339,28 @@ export function AssistantEditor({
       existingPersona?.llm_model_provider_override ?? null,
     llm_model_version_override:
       existingPersona?.llm_model_version_override ?? null,
-    starter_messages: existingPersona?.starter_messages ?? [],
+    starter_messages: existingPersona?.starter_messages ?? [
+      {
+        name: "",
+        description: "",
+        message: "",
+      },
+      {
+        name: "",
+        description: "",
+        message: "",
+      },
+      {
+        name: "",
+        description: "",
+        message: "",
+      },
+      {
+        name: "",
+        description: "",
+        message: "",
+      },
+    ],
     enabled_tools_map: enabledToolsMap,
     icon_color: existingPersona?.icon_color ?? defautIconColor,
     icon_shape: existingPersona?.icon_shape ?? defaultIconShape,
@@ -311,7 +370,6 @@ export function AssistantEditor({
     groups: existingPersona?.groups ?? [],
   };
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
   interface AssistantPrompt {
     message: string;
     description: string;
@@ -321,6 +379,9 @@ export function AssistantEditor({
   // Create debounced refresh function
   const debouncedRefreshPrompts = debounce(
     async (values: any, setFieldValue: any) => {
+      if (!autoStarterMessageEnabled) {
+        return;
+      }
       setIsRefreshing(true);
       try {
         const response = await fetch("/api/persona/assistant-prompt-refresh", {
@@ -1135,7 +1196,7 @@ export function AssistantEditor({
                 </div>
               </div>
 
-              <div className="mb-6 flex flex-col">
+              <div className="mb-6 max-w-5xl w-full flex flex-col">
                 <div className="flex gap-x-2 items-center">
                   <div className="block font-medium text-base">
                     Starter Messages
@@ -1146,51 +1207,75 @@ export function AssistantEditor({
                   Add pre-defined messages to help users get started. Only the
                   first 4 will be displayed.
                 </SubLabel>
-                <Button
-                  type="button"
-                  size="xs"
-                  onClick={() => debouncedRefreshPrompts(values, setFieldValue)}
-                  disabled={
-                    isRefreshing ||
-                    (Object.keys(errors).length > 0 &&
-                      Object.keys(errors).some(
-                        (key) => !key.startsWith("starter_messages")
-                      ))
-                  }
-                  className={`
-                    px-3 py-2
-                    mr-auto
-                    my-2
-                    flex gap-x-2
-                    text-sm font-medium
-                    rounded-lg shadow-sm
-                    items-center gap-2
-                    transition-colors duration-200
-                    ${
-                      isRefreshing
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-blue-50 text-blue-600 hover:bg-blue-1r00 active:bg-blue-200"
-                    }
-                  `}
-                >
-                  <div className="flex items-center gap-x-2">
-                    {isRefreshing ? (
-                      <Recycle className="w-4 h-4 animate-spin text-gray-400" />
-                    ) : (
-                      <SwapIcon className="w-4 h-4 text-blue-600" />
+                <div className="relative w-fit">
+                  <TooltipProvider delayDuration={50}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            type="button"
+                            size="xs"
+                            onClick={() =>
+                              debouncedRefreshPrompts(values, setFieldValue)
+                            }
+                            disabled={
+                              !autoStarterMessageEnabled ||
+                              isRefreshing ||
+                              (Object.keys(errors).length > 0 &&
+                                Object.keys(errors).some(
+                                  (key) => !key.startsWith("starter_messages")
+                                ))
+                            }
+                            className={`
+                            px-3 py-2
+                            mr-auto
+                            my-2
+                            flex gap-x-2
+                            text-sm font-medium
+                            rounded-lg shadow-sm
+                            items-center gap-2
+                            transition-colors duration-200
+                            ${
+                              isRefreshing || !autoStarterMessageEnabled
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-blue-50 text-blue-600 hover:bg-blue-100 active:bg-blue-200"
+                            }
+                          `}
+                          >
+                            <div className="flex items-center gap-x-2">
+                              {isRefreshing ? (
+                                <Recycle className="w-4 h-4 animate-spin text-gray-400" />
+                              ) : (
+                                <SwapIcon className="w-4 h-4 text-blue-600" />
+                              )}
+                              {isRefreshing ? "Generating..." : "Regenerate"}
+                            </div>
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {!autoStarterMessageEnabled && (
+                        <TooltipContent side="top" align="center">
+                          <p className="bg-background-900 max-w-[200px] mb-1 text-sm rounded-lg p-1.5 text-white">
+                            No LLM providers configured. Generation is not
+                            available.
+                          </p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="w-full">
+                  <FieldArray
+                    name="starter_messages"
+                    render={(arrayHelpers: ArrayHelpers) => (
+                      <StarterMessagesList
+                        isRefreshing={isRefreshing}
+                        values={values.starter_messages}
+                        arrayHelpers={arrayHelpers}
+                      />
                     )}
-                    {isRefreshing ? "Refreshing..." : "Refresh All"}
-                  </div>
-                </Button>
-                <FieldArray
-                  name="starter_messages"
-                  render={(arrayHelpers: ArrayHelpers) => (
-                    <StarterMessagesList
-                      values={values.starter_messages}
-                      arrayHelpers={arrayHelpers}
-                    />
-                  )}
-                />
+                  />
+                </div>
               </div>
               <Divider />
               <AdvancedOptionsToggle

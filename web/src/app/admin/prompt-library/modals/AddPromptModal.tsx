@@ -15,7 +15,7 @@ const AddPromptSchema = Yup.object().shape({
 
 const AddPromptModal = ({ onClose, onSubmit }: AddPromptModalProps) => {
   return (
-    <Modal onOutsideClick={onClose} width="max-w-xl">
+    <Modal onOutsideClick={onClose} width="w-full max-w-3xl">
       <Formik
         initialValues={{
           title: "",

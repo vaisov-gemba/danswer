@@ -1,3 +1,4 @@
+import json
 import uuid
 from uuid import UUID
 
@@ -335,14 +336,14 @@ def build_assistant_prompts(
     db_session: Session = Depends(get_session),
     _: User | None = Depends(current_user),
 ) -> list[StarterMessage]:
-    print("generate_persona_prompt_request.document_set_ids")
-    print(generate_persona_prompt_request.document_set_ids)
     base_prompt = (
-        "Create a very short starter message for a chatbot based on the provided content. "
-        "Ensure it includes a name and description, and invites user interaction. "
-        "Name shuodl be name of the prompt, desciprtion of hte promtps and then the acutal message that is setn"
-        + f"name {generate_persona_prompt_request.name}\n"
-        + f"description: {generate_persona_prompt_request.description}"
+        "Create a starter message for a chatbot. The response should include three parts:\n"
+        "1. Name: A short, clear title for the prompt (e.g. 'Open Discussion', 'Project Planning')\n"
+        "2. Description: A brief explanation of what this prompt is for\n"
+        "3. Message: The actual conversation starter that will be sent to the chatbot. This should be natural and engaging.\n\n"
+        "Make each part concise but inviting for user interaction.\n"
+        f"Context about the assistant - Name: {generate_persona_prompt_request.name}\n"
+        f"Description: {generate_persona_prompt_request.description}"
     )
     _, fast_llm = get_default_llms(temperature=1.0)
     if (
@@ -363,8 +364,6 @@ def build_assistant_prompts(
 
     prompts: StarterMessage = []
     for _ in range(4):
-        import json
-
         response = json.loads(
             fast_llm.invoke(
                 base_prompt, structured_response_format=StarterMessage
@@ -379,5 +378,3 @@ def build_assistant_prompts(
         prompts.append(starter_message)
 
     return prompts
-
-    # return build_assistant_prompts(assistant_schema=assistant_schema)
