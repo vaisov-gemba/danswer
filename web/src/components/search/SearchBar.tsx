@@ -19,7 +19,7 @@ interface FullSearchBarProps {
 
 import { useRef } from "react";
 import { SendIcon } from "../icons/icons";
-import { Divider } from "@tremor/react";
+import { Separator } from "@/components/ui/separator";
 import { CustomTooltip } from "../tooltip/CustomTooltip";
 import KeyboardSymbol from "@/lib/browserUtilities";
 import { HorizontalSourceSelector } from "./filtering/Filters";
@@ -49,7 +49,7 @@ export const AnimatedToggle = ({
             Our most powerful search, have an AI agent guide you to pinpoint
             exactly what you&apos;re looking for.
           </p>
-          <Divider />
+          <Separator />
           <h2 className="text-xl text-text-800 font-bold mb-2">Fast Search</h2>
           <p className="text-text-700 text-sm mb-4">
             Get quality results immediately, best suited for instant access to
@@ -178,10 +178,14 @@ export const FullSearchBar = ({
         suppressContentEditableWarning={true}
       />
       <div
-        className={`flex flex-nowrap ${showingSidebar ? " 2xl:justify-between" : "2xl:justify-end"} justify-between 4xl:justify-end w-full max-w-full items-center space-x-3 py-3 px-4`}
+        className={`flex flex-nowrap ${
+          showingSidebar ? " 2xl:justify-between" : "2xl:justify-end"
+        } justify-between 4xl:justify-end w-full max-w-full items-center space-x-3 py-3 px-4`}
       >
         <div
-          className={`-my-1 flex-grow 4xl:hidden ${!showingSidebar && "2xl:hidden"}`}
+          className={`-my-1 flex-grow 4xl:hidden ${
+            !showingSidebar && "2xl:hidden"
+          }`}
         >
           {(ccPairs.length > 0 || documentSets.length > 0) && (
             <HorizontalSourceSelector
@@ -208,7 +212,11 @@ export const FullSearchBar = ({
             >
               <SendIcon
                 size={28}
-                className={`text-emphasis ${disabled || !query ? "bg-disabled-submit-background" : "bg-submit-background"} text-white p-1 rounded-full`}
+                className={`text-emphasis ${
+                  disabled || !query
+                    ? "bg-disabled-submit-background"
+                    : "bg-submit-background"
+                } text-white p-1 rounded-full`}
               />
             </button>
           </div>
